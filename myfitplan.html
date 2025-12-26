@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能减脂助手 - Powered by cori</title>
+    <style>
+        :root { --primary: #27ae60; --secondary: #2c3e50; --bg: #f4f7f6; --accent: #e67e22; --info: #3498db; }
+        body { font-family: -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: var(--bg); }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1, h2 { color: var(--secondary); text-align: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #219150; }
+        
+        .recipe-section, .workout-section { border-radius: 12px; padding: 20px; margin-top: 15px; }
+        .recipe-section { background: #fff8f0; border: 2px dashed var(--accent); }
+        .workout-section { background: #ebf5fb; border: 2px dashed var(--info); }
+        
+        .item-row { margin-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 8px; }
+        .tag { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
+        .refresh-btn { margin-top: 10px; font-size: 14px; padding: 10px; }
+        .btn-orange { background: var(--accent); }
+        .btn-blue { background: var(--info); }
+        
+        footer { text-align: center; margin-top: 40px; padding: 20px; color: #888; border-top: 1px solid #ddd; font-size: 14px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <h1>🥗 AI 智能减脂/训练助手</h1>
+
+    <div class="card">
+        <h2>1. 个人档案</h2>
+        <div class="grid">
+            <input type="number" id="height" placeholder="身高(cm)">
+            <input type="number" id="weight" placeholder="体重(kg)">
+            <input type="number" id="age" placeholder="年龄">
+            <select id="gender"><option value="male">男</option><option value="female">女</option></select>
+        </div>
+        <button onclick="calculatePlan()" style="margin-top:10px">保存配置</button>
+        <div id="resultBox" style="display:none; margin-top:15px; background:#e8f5e9; padding:10px; border-radius:8px; font-size:14px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>2. 今日训练计划</h2>
+        <div id="workoutDisplay" class="workout-section">点击下方按钮生成训练计划</div>
+        <button class="refresh-btn btn-blue" onclick="generateWorkout()">🏋️ 随机生成/更换训练方案</button>
+    </div>
+
+    <div class="card">
+        <h2>3. 今日食谱 & 盒马清单</h2>
+        <div id="recipeDisplay" class="recipe-section">点击下方按钮生成食谱计划</div>
+        <button class="refresh-btn btn-orange" onclick="generateRecipe()">🥗 随机生成/更换饮食方案</button>
+    </div>
+
+    <div class="card">
+        <h2>4. 进度打卡</h2>
+        <div class="grid" style="grid-template-columns: 2fr 1fr;">
+            <input type="number" id="dailyWeight" step="0.1" placeholder="今日体重">
+            <button onclick="logWeight()">记录</button>
+        </div>
+        <div id="weightLog" style="margin-top:10px; font-size:14px; color:#666"></div>
+    </div>
+
+    <footer>
+        <p>制作人：<strong>cori</strong> | 联系微信：<strong>xiao874983197</strong></p>
+    </footer>
+
+    <script>
+        const workoutLib = [
+            {
+                title: "【推系列】胸肩三头",
+                actions: ["杠铃/哑铃卧推 4组x10次", "哑铃侧平举 4组x15次", "俯卧撑 3组至力竭", "双杠臂屈伸/板凳支撑 3组x12次"],
+                tip: "注意沉肩，感受胸部发力，不要过度耸肩。"
+            },
+            {
+                title: "【拉系列】背部二头",
+                actions: ["高位下拉/引体向上 4组x10次", "单臂哑铃划船 4组x12次", "哑铃弯举 3组x12次", "悬垂举腿 3组x15次"],
+                tip: "拉起时背部收紧，不要用手臂死拉，保护腰椎。"
+            },
+            {
+                title: "【腿系列】下肢核心",
+                actions: ["杯状深蹲(负重) 4组x12次", "保加利亚单腿蹲 3组x10次", "哑铃硬拉 4组x12次", "提踵(垫脚尖) 3组x20次"],
+                tip: "膝盖不要内扣，核心全程收紧，高尿酸运动后多喝水。"
+            },
+            {
+                title: "【加班补救】家庭HIIT",
+                actions: ["开合跳 1分钟x5组", "波比跳 15个x4组", "静态深蹲 1分钟x3组", "支撑登山跑 1分钟x3组"],
+                tip: "适合加班晚归，快速消耗，提高心肺。"
+            }
+        ];
+
+        const recipeLib = [
+            {
+                meals: ["早：煮蛋2+玉米1+豆浆", "午：去皮白斩鸡+西兰花+半碗饭", "晚：豆腐1盒+黄瓜+鸡肉丸"],
+                shopping: ["日日鲜鸡蛋", "甜玉米", "白斩鸡", "西兰花", "内脂豆腐"],
+                budget: "38元"
+            },
+            {
+                meals: ["早：全麦面包+牛奶+鸡蛋", "午：清蒸龙利鱼+生菜+南瓜", "晚：即食鸡胸肉+大西红柿"],
+                shopping: ["全麦吐司", "冷冻龙利鱼", "日日鲜生菜", "贝贝南瓜", "即食鸡胸肉"],
+                budget: "42元"
+            }
+        ];
+
+        function generateWorkout() {
+            const w = workoutLib[Math.floor(Math.random() * workoutLib.length)];
+            document.getElementById('workoutDisplay').innerHTML = `
+                <h3 style="margin:0; color:var(--info)">${w.title}</h3>
+                <div style="margin:10px 0">${w.actions.map(a => `<div class="item-row">✅ ${a}</div>`).join('')}</div>
+                <div style="font-size:13px; color:#7f8c8d">📝 贴士：${w.tip}</div>
+            `;
+        }
+
+        function generateRecipe() {
+            const r = recipeLib[Math.floor(Math.random() * recipeLib.length)];
+            document.getElementById('recipeDisplay').innerHTML = `
+                <div style="margin-bottom:10px">${r.meals.map(m => `<div class="item-row">${m}</div>`).join('')}</div>
+                <div><b>清单：</b>${r.shopping.map(s => `<span class="tag">${s}</span>`).join('')}</div>
+                <div style="text-align:right; color:var(--accent); font-weight:bold">预估：${r.budget}</div>
+            `;
+        }
+
+        function calculatePlan() {
+            const h = document.getElementById('height').value;
+            const w = document.getElementById('weight').value;
+            if(!h || !w) return;
+            const bmi = (w / ((h/100)**2)).toFixed(1);
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('resultBox').innerHTML = `BMI: ${bmi} | 建议：力量训练保持肌肉，控糖控油。`;
+            localStorage.setItem('config_cori_final', JSON.stringify({h, w}));
+        }
+
+        function logWeight() {
+            const w = document.getElementById('dailyWeight').value;
+            if(!w) return;
+            let logs = JSON.parse(localStorage.getItem('logs_cori_final') || '[]');
+            logs.unshift({d: new Date().toLocaleDateString(), w});
+            localStorage.setItem('logs_cori_final', JSON.stringify(logs.slice(0, 10)));
+            showLogs();
+        }
+
+        function showLogs() {
+            let logs = JSON.parse(localStorage.getItem('logs_cori_final') || '[]');
+            document.getElementById('weightLog').innerHTML = logs.map(l => `<div>${l.d}: <b>${l.w}kg</b></div>`).join('');
+        }
+
+        window.onload = function() {
+            const conf = JSON.parse(localStorage.getItem('config_cori_final'));
+            if(conf) { document.getElementById('height').value = conf.h; document.getElementById('weight').value = conf.w; calculatePlan(); }
+            showLogs(); generateWorkout(); generateRecipe();
+        };
+    </script>
+</body>
+</html>
